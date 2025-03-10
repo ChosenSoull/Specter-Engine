@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>resources/SpecterEngineLogo.png</file>
+        <file>resources/folder_icon.png</file>
+        <file>resources/create_icon.png</file>
+        <file>resources/open_icon.png</file>
+    </qresource>
+</RCC>
