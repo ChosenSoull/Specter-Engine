@@ -63,7 +63,8 @@ private:
     void setupHierarchyPanel();
     void setupInspectorPanel();
     void setupAssetBrowser();
-    void setupConsolePanel();
+    void setupTerminalPanel(); // Добавляем объявление метода
+    void openTerminal();
     void setupModulesPanel();
     void setupStatusBar();
     void setupMenuBar();
@@ -85,10 +86,11 @@ private:
     QDockWidget *hierarchyDock;
     QDockWidget *inspectorDock;
     QDockWidget *assetBrowserDock;
-    QDockWidget *consoleDock;
+    QDockWidget *terminalDock; // Уже есть
     QDockWidget *modulesDock;
     QStatusBar *statusBar;
     QProcess *codeEditorProcess;
+    QProcess *terminalProcess; // Уже есть
 };
 
-#endif
+#endif // EDITORWINDOW_H

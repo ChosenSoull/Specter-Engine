@@ -1,4 +1,5 @@
 #include "editorwindow.h"
+#include "terminalwidget.h" // Подключаем TerminalWidget
 #include <QVBoxLayout>
 #include <QSettings>
 #include <QPushButton>
@@ -9,15 +10,21 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDebug>
+#include <QInputDialog>
+#include <QToolButton>
+#include <QHBoxLayout>
+#include <QTreeWidgetItem>
+#include <QProcess>
+#include <QDockWidget>
 
 EditorWindow::EditorWindow(const QString &projectPath, QWidget *parent)
-    : QMainWindow(parent), projectPath(projectPath), codeEditorProcess(nullptr) {
+    : QMainWindow(parent), projectPath(projectPath), codeEditorProcess(nullptr), terminalProcess(nullptr) {
     // Загружаем имя проекта из config.cfg
     QSettings config(projectPath + "/config.cfg", QSettings::IniFormat);
     config.beginGroup("Project");
     QString projectName = config.value("Name", "Unnamed Project").toString();
     config.endGroup();
-    setWindowTitle(projectName + " - Specter Game Engine Editor");
+    setWindowTitle(projectName + " - Specter Engine Editor");
     resize(1200, 800);
 
     // Устанавливаем логотип окна
@@ -58,7 +65,7 @@ void EditorWindow::setupUI() {
     setupHierarchyPanel();
     setupInspectorPanel();
     setupAssetBrowser();
-    setupConsolePanel();
+    setupTerminalPanel(); // Заменяем setupConsolePanel на setupTerminalPanel
     setupModulesPanel();
 
     // Статус-бар
@@ -110,6 +117,7 @@ void EditorWindow::setupMenuBar() {
     // Edit Menu
     QMenu *editMenu = menuBar->addMenu("Edit");
     editMenu->addAction("Open Code Editor", this, &EditorWindow::openCodeEditor);
+    editMenu->addAction("Open Terminal", this, &EditorWindow::openTerminal); // Добавлено
 
     // Build Menu
     QMenu *buildMenu = menuBar->addMenu("Build");
@@ -151,6 +159,27 @@ void EditorWindow::setupHierarchyPanel() {
     hierarchyTree->setHeaderLabels(headers);
     hierarchyTree->addTopLevelItem(new QTreeWidgetItem(QStringList() << "Object1"));
     hierarchyTree->addTopLevelItem(new QTreeWidgetItem(QStringList() << "Object2"));
+
+    // Контекстное меню для объектов
+    hierarchyTree->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(hierarchyTree, &QTreeWidget::customContextMenuRequested, this, [this, hierarchyTree](const QPoint &pos) {
+        QTreeWidgetItem *item = hierarchyTree->itemAt(pos);
+        if (item) {
+            QMenu contextMenu;
+            contextMenu.addAction("Rename", this, [item]() {
+                bool ok;
+                QString newName = QInputDialog::getText(nullptr, "Rename Object", "Enter new name:", QLineEdit::Normal, item->text(0), &ok);
+                if (ok && !newName.isEmpty()) {
+                    item->setText(0, newName);
+                }
+            });
+            contextMenu.addAction("Delete", this, [item]() {
+                delete item;
+            });
+            contextMenu.exec(QCursor::pos());
+        }
+    });
+
     hierarchyDock->setWidget(hierarchyTree);
     addDockWidget(Qt::LeftDockWidgetArea, hierarchyDock);
 }
@@ -163,11 +192,18 @@ void EditorWindow::setupInspectorPanel() {
     QLabel *objectName = new QLabel("Selected Object: None", this);
     layout->addWidget(objectName);
 
-    QCheckBox *transformCheck = new QCheckBox("Transform", this);
-    layout->addWidget(transformCheck);
-
+    // Пример редактируемых свойств
     QLineEdit *positionX = new QLineEdit("0.0", this);
+    positionX->setPlaceholderText("Position X");
     layout->addWidget(positionX);
+
+    QLineEdit *positionY = new QLineEdit("0.0", this);
+    positionY->setPlaceholderText("Position Y");
+    layout->addWidget(positionY);
+
+    QLineEdit *positionZ = new QLineEdit("0.0", this);
+    positionZ->setPlaceholderText("Position Z");
+    layout->addWidget(positionZ);
 
     QPushButton *addComponent = new QPushButton("Add Component", this);
     layout->addWidget(addComponent);
@@ -179,21 +215,36 @@ void EditorWindow::setupInspectorPanel() {
 
 void EditorWindow::setupAssetBrowser() {
     assetBrowserDock = new QDockWidget("Asset Browser", this);
+    QWidget *assetBrowserWidget = new QWidget(this);
+    QVBoxLayout *layout = new QVBoxLayout(assetBrowserWidget);
+
+    // Строка поиска
+    QLineEdit *searchBar = new QLineEdit(this);
+    searchBar->setPlaceholderText("Search assets...");
+    layout->addWidget(searchBar);
+
+    // Список ресурсов с иконками
     QListWidget *assetList = new QListWidget(this);
-    assetList->addItem(new QListWidgetItem("Texture1.png"));
-    assetList->addItem(new QListWidgetItem("Model1.obj"));
-    assetBrowserDock->setWidget(assetList);
+    assetList->addItem(new QListWidgetItem(QIcon(":/resources/texture_icon.png"), "Texture1.png"));
+    assetList->addItem(new QListWidgetItem(QIcon(":/resources/model_icon.png"), "Model1.obj"));
+
+    layout->addWidget(assetList);
+    assetBrowserDock->setWidget(assetBrowserWidget);
     addDockWidget(Qt::LeftDockWidgetArea, assetBrowserDock);
-    tabifyDockWidget(assetBrowserDock, hierarchyDock);
 }
 
-void EditorWindow::setupConsolePanel() {
-    consoleDock = new QDockWidget("Console", this);
-    QTextEdit *consoleText = new QTextEdit(this);
-    consoleText->setReadOnly(true);
-    consoleText->append("Log: Engine started.");
-    consoleDock->setWidget(consoleText);
-    addDockWidget(Qt::BottomDockWidgetArea, consoleDock);
+void EditorWindow::setupTerminalPanel() {
+    terminalDock = new QDockWidget("Terminal", this);
+    TerminalWidget *terminalWidget = new TerminalWidget(this);
+    terminalDock->setWidget(terminalWidget);
+    addDockWidget(Qt::BottomDockWidgetArea, terminalDock);
+}
+
+void EditorWindow::openTerminal() {
+    if (terminalDock) {
+        terminalDock->show();
+        terminalDock->raise(); // Поднимаем панель на передний план
+    }
 }
 
 void EditorWindow::setupModulesPanel() {
@@ -203,7 +254,6 @@ void EditorWindow::setupModulesPanel() {
     modulesList->addItem(new QListWidgetItem("Physics Module"));
     modulesDock->setWidget(modulesList);
     addDockWidget(Qt::LeftDockWidgetArea, modulesDock);
-    tabifyDockWidget(modulesDock, hierarchyDock);
 }
 
 void EditorWindow::setupStatusBar() {
@@ -226,7 +276,7 @@ void EditorWindow::openProject() {
         config.beginGroup("Project");
         QString projectName = config.value("Name", "Unnamed Project").toString();
         config.endGroup();
-        setWindowTitle(projectName + " - Specter Game Engine Editor");
+        setWindowTitle(projectName + " - Specter Engine Editor");
     }
 }
 
