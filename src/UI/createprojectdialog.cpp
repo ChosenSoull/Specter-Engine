@@ -14,6 +14,7 @@
 #include <QScrollArea>
 #include <QLabel>
 #include <QFontMetrics>
+#include <QTimer>
 
 // Реализация LibraryItemWidget
 LibraryItemWidget::LibraryItemWidget(const QString &name, const QString &description, const QString &avatarPath, QWidget *parent)
@@ -118,8 +119,31 @@ void CreateProjectDialog::setupUI() {
     leftLayout->addWidget(descriptionEdit);
 
     // Выбор 2D/3D
-    renderMode3DCheck = new QCheckBox("Enable 3D (unchecked for 2D)", this);
-    leftLayout->addWidget(renderMode3DCheck);
+    // Вместо:
+    // renderMode3DCheck = new QCheckBox("Enable 3D (unchecked for 2D)", this);
+    // leftLayout->addWidget(renderMode3DCheck);
+
+    // Добавляем два чекбокса:
+    QWidget* renderModeWidget = new QWidget(this);
+    QHBoxLayout* renderModeLayout = new QHBoxLayout(renderModeWidget);
+    renderModeLayout->setContentsMargins(0,0,0,0);
+    renderModeLayout->setSpacing(1);
+
+    QCheckBox* renderMode3DCheck = new QCheckBox("3D", this);
+    QCheckBox* renderMode2DCheck = new QCheckBox("2D", this);
+    // Задаём взаимно исключающий выбор:
+    connect(renderMode3DCheck, &QCheckBox::toggled, this, [=](bool checked){
+        if(checked) renderMode2DCheck->setChecked(false);
+    });
+    connect(renderMode2DCheck, &QCheckBox::toggled, this, [=](bool checked){
+        if(checked) renderMode3DCheck->setChecked(false);
+    });
+    // По умолчанию можно выбрать, например, 2D:
+    renderMode2DCheck->setChecked(true);
+
+    renderModeLayout->addWidget(renderMode3DCheck);
+    renderModeLayout->addWidget(renderMode2DCheck);
+    leftLayout->addWidget(renderModeWidget);
 
     // Группа для выбора рендеринга с динамической нумерацией
     QGroupBox* renderGroupBox = new QGroupBox("Render Options (Click to select order, double-click to remove)", this);
@@ -166,7 +190,8 @@ void CreateProjectDialog::setupUI() {
     libsContainer->setLayout(libsLayout);
     libsScrollArea->setWidget(libsContainer);
     rightLayout->addWidget(libsScrollArea);
-    rightLayout->addStretch();
+    rightWidget->setMinimumHeight(370);
+    rightWidget->setMaximumHeight(370); 
     mainLayout->addWidget(rightWidget, 3); // правая панель – 1/3 ширины
 }
 
@@ -241,30 +266,19 @@ QList<LibraryItemWidget*> CreateProjectDialog::getSelectedLibraries() const {
 }
 
 void CreateProjectDialog::onRenderOptionClicked(RenderOptionWidget* option) {
-
-    if (option->isSelected()) {
-        // Если опция уже выбрана, то сбрасываем её
-        option->setSelected(false);
-        option->setOrder(0);
-        selectedRenderOptions.removeAll(option);
-
-        // После удаления опции перенумеровываем оставшиеся элементы
-        for (int i = 0; i < selectedRenderOptions.size(); ++i) {
-            selectedRenderOptions[i]->setOrder(i + 1);
-        }
-    } else {
-        // Если количество выбранных опций достигло максимума, удаляем первую
-        if (selectedRenderOptions.size() >= 2) {
+    // Если опция уже выбрана – ничего не делаем (или можно реализовать переключение, если нужно)
+    if (!option->isSelected()) {
+        // Если число выбранных опций достигло максимума (для Linux — 2, иначе 3), удаляем первую
+        int maxOptions = (QSysInfo::productType() == "linux") ? 2 : 3;
+        if (selectedRenderOptions.size() >= maxOptions) {
             RenderOptionWidget* removedOption = selectedRenderOptions.takeFirst();
             removedOption->setSelected(false);
             removedOption->setOrder(0);
         }
-
-        // Добавляем новую опцию
+        // Выбираем новую опцию
         option->setSelected(true);
         selectedRenderOptions.append(option);
-
-        // Перенумеровываем все опции, чтобы они шли по порядку
+        // Перенумеровываем выбранные опции
         for (int i = 0; i < selectedRenderOptions.size(); ++i) {
             selectedRenderOptions[i]->setOrder(i + 1);
         }
@@ -274,14 +288,11 @@ void CreateProjectDialog::onRenderOptionClicked(RenderOptionWidget* option) {
 void CreateProjectDialog::onRenderOptionRemoved(RenderOptionWidget* option) {
     // Убираем опцию из списка выбранных
     selectedRenderOptions.removeAll(option);
-
-    // Сбрасываем её состояние
     option->setSelected(false);
-    option->setOrder(0); // Сбрасываем номер на 0
-
-    // Перенумеровываем оставшиеся опции
+    option->setOrder(0);
+    // Перенумеровываем оставшиеся
     for (int i = 0; i < selectedRenderOptions.size(); ++i) {
-        selectedRenderOptions[i]->setOrder(i + 1);
+         selectedRenderOptions[i]->setOrder(i + 1);
     }
 }
 

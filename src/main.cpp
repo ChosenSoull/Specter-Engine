@@ -1,16 +1,20 @@
-#include <QApplication>
 #include "UI/startupdialog.h"
-#include <iostream>
+#include "UI/editorwindow.h"
+#include <QApplication>
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
-    StartupDialog dialog;
-    if (dialog.exec() == QDialog::Accepted) {
-        std::cout << "Выбран проект: " << dialog.getSelectedProjectPath().toStdString() << std::endl;
-    } else {
-        std::cout << "Программа закрыта без выбора проекта" << std::endl;
-    }
+    StartupDialog startupDialog;
+    startupDialog.show();
+
+    // Подключаем сигнал projectSelected к открытию редактора
+    QObject::connect(&startupDialog, &StartupDialog::projectSelected, [&startupDialog](const QString &path) {
+        EditorWindow *editor = new EditorWindow(path);
+        editor->show();
+        // Закрываем StartupDialog после открытия редактора
+        startupDialog.close();
+    });
 
     return app.exec();
 }

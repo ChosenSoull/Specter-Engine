@@ -56,6 +56,9 @@ public:
 
     QString getSelectedProjectPath() const { return selectedProjectPath; }
 
+signals:
+    void projectSelected(const QString &path); // Сигнал для открытия редактора
+
 private slots:
     void onCreateProjectClicked();
     void onOpenProjectClicked();

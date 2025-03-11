@@ -1,5 +1,5 @@
 #include "startupdialog.h"
-#include "createprojectdialog.h" // Добавляем заголовок нового диалога
+#include "createprojectdialog.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFileDialog>
@@ -12,7 +12,7 @@
 
 StartupDialog::StartupDialog(QWidget* parent) : QDialog(parent) {
     setWindowTitle("Specter Game Engine");
-    setFixedSize(450, 350); // Увеличиваем ширину для размещения кнопок горизонтально
+    setFixedSize(450, 350);
 
     // Установка иконки для окна
     QIcon windowIcon(":/resources/SpecterEngineLogo.png");
@@ -49,7 +49,7 @@ StartupDialog::StartupDialog(QWidget* parent) : QDialog(parent) {
     // Горизонтальный макет для списка и кнопок
     QHBoxLayout* contentLayout = new QHBoxLayout();
 
-    // Список последних проектов (в виде текста с иконкой)
+    // Список последних проектов
     projectsWidget = new QWidget(this);
     projectsLayout = new QVBoxLayout(projectsWidget);
     projectsLayout->setAlignment(Qt::AlignTop);
@@ -72,7 +72,7 @@ StartupDialog::StartupDialog(QWidget* parent) : QDialog(parent) {
     }
     QLabel* createTextLabel = new QLabel("Create Project", this);
     createTextLabel->setAlignment(Qt::AlignCenter);
-    createButtonLayout->addWidget(createIconLabel, 1); // Добавляем растяжение для иконки
+    createButtonLayout->addWidget(createIconLabel, 1);
     createButtonLayout->addWidget(createTextLabel);
     createButton->setFixedSize(200, 250);
 
@@ -88,17 +88,17 @@ StartupDialog::StartupDialog(QWidget* parent) : QDialog(parent) {
     }
     QLabel* openTextLabel = new QLabel("Open Project", this);
     openTextLabel->setAlignment(Qt::AlignCenter);
-    openButtonLayout->addWidget(openIconLabel, 1); // Добавляем растяжение для иконки
+    openButtonLayout->addWidget(openIconLabel, 1);
     openButtonLayout->addWidget(openTextLabel);
     openButton->setFixedSize(200, 250);
 
     connect(createButton, &QPushButton::clicked, this, &StartupDialog::onCreateProjectClicked);
     connect(openButton, &QPushButton::clicked, this, &StartupDialog::onOpenProjectClicked);
 
-    buttonLayout->addStretch(); // Добавляем растяжение слева
+    buttonLayout->addStretch();
     buttonLayout->addWidget(createButton);
     buttonLayout->addWidget(openButton);
-    buttonLayout->addStretch(); // Добавляем растяжение справа
+    buttonLayout->addStretch();
 
     contentLayout->addLayout(buttonLayout);
     mainLayout->addLayout(contentLayout);
@@ -117,27 +117,36 @@ void StartupDialog::onCreateProjectClicked() {
         selectedProjectPath = dialog.getProjectPath();
         if (!selectedProjectPath.isEmpty()) {
             loadRecentProjects();
+            emit projectSelected(selectedProjectPath); // Испускаем сигнал
             accept();
         }
     }
 }
 
 void StartupDialog::onOpenProjectClicked() {
-    QString dir = QFileDialog::getOpenFileName(this, "Open Project", "", "Project Files (*.proj)");
+    // Изменяем выбор на директорию вместо файла
+    QString dir = QFileDialog::getExistingDirectory(this, "Open Project Directory");
     if (!dir.isEmpty()) {
+        // Проверяем, существует ли config.cfg в выбранной директории
+        QFile configFile(dir + "/config.cfg");
+        if (!configFile.exists()) {
+            QMessageBox::warning(this, "Error", "Selected directory does not contain a valid project (missing config.cfg)!");
+            return;
+        }
         selectedProjectPath = dir;
         loadRecentProjects();
+        emit projectSelected(selectedProjectPath); // Испускаем сигнал
         accept();
     }
 }
 
 void StartupDialog::onProjectSelected(int index) {
     selectedProjectPath = projectWidgets[index]->findChild<QLabel*>()->toolTip();
+    emit projectSelected(selectedProjectPath); // Испускаем сигнал
     accept();
 }
 
 void StartupDialog::loadRecentProjects() {
-    // Очищаем текущий список
     for (auto* widget : projectWidgets) {
         projectsLayout->removeWidget(widget);
         delete widget;
@@ -146,11 +155,11 @@ void StartupDialog::loadRecentProjects() {
 
     QStringList projects = settings->value("recent_projects").toStringList();
     if (projects.isEmpty()) {
-        projectsWidget->hide(); // Скрываем виджет, если проектов нет
+        projectsWidget->hide();
         return;
     }
 
-    projectsWidget->show(); // Показываем виджет, если проекты есть
+    projectsWidget->show();
 
     for (int i = 0; i < projects.size(); ++i) {
         QStringList parts = projects[i].split("|");
@@ -159,12 +168,10 @@ void StartupDialog::loadRecentProjects() {
         QString name = parts[0];
         QString path = parts[1];
 
-        // Создаём кастомный виджет для проекта
         ProjectWidget* projectWidget = new ProjectWidget(name, path, i, this);
         projectsLayout->addWidget(projectWidget);
         projectWidgets.append(projectWidget);
 
-        // Подключаем сигнал клика
         connect(projectWidget, &ProjectWidget::clicked, this, &StartupDialog::onProjectSelected);
     }
 }

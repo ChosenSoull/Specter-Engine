@@ -16,6 +16,7 @@
 #include <QFileDialog>
 #include <QMouseEvent>
 #include <QHBoxLayout>
+#include <QTimer>
 
 // Кликабельная иконка для выбора изображения
 class ClickableLabel : public QLabel {
@@ -61,11 +62,12 @@ private:
 };
 
 // Виджет для выбора рендеринга с динамической нумерацией
+// Виджет для выбора рендеринга с динамической нумерацией
 class RenderOptionWidget : public QWidget {
     Q_OBJECT
 public:
     explicit RenderOptionWidget(const QString &apiName, QWidget *parent = nullptr)
-        : QWidget(parent), api(apiName), selected(false), order(0)
+        : QWidget(parent), api(apiName), selected(false), order(0), longPressTriggered(false)
     {
         QHBoxLayout *layout = new QHBoxLayout(this);
         layout->setContentsMargins(5, 5, 5, 5);
@@ -74,8 +76,16 @@ public:
         labelApi = new QLabel(apiName, this);
         layout->addWidget(labelOrder);
         layout->addWidget(labelApi);
-        // Всегда используем стандартную обводку
         setStyleSheet("border: 1px solid gray;");
+
+        // Создаем таймер для распознавания долгого нажатия (например, 800 мс)
+        longPressTimer = new QTimer(this);
+        longPressTimer->setSingleShot(true);
+        longPressTimer->setInterval(800);
+        connect(longPressTimer, &QTimer::timeout, this, [this](){
+            longPressTriggered = true;
+            emit removed(this);
+        });
     }
 
     int getOrder() const { return order; }
@@ -87,6 +97,7 @@ public:
     bool isSelected() const { return selected; }
     void setSelected(bool sel) {
          selected = sel;
+         // Можно менять стиль в зависимости от состояния
          setStyleSheet("border: 1px solid gray;");
     }
 
@@ -94,16 +105,17 @@ public:
 
 protected:
     void mousePressEvent(QMouseEvent *event) override {
-         if (!selected) {
-             emit clicked(this);
-         }
+         longPressTriggered = false;
+         longPressTimer->start();
          QWidget::mousePressEvent(event);
     }
-    void mouseDoubleClickEvent(QMouseEvent *event) override {
-         if (selected) {
-             emit removed(this);
+    void mouseReleaseEvent(QMouseEvent *event) override {
+         longPressTimer->stop();
+         if (!longPressTriggered) {
+             // Если это не было долгим нажатием – считаем как обычный клик
+             emit clicked(this);
          }
-         QWidget::mouseDoubleClickEvent(event);
+         QWidget::mouseReleaseEvent(event);
     }
 
 signals:
@@ -116,6 +128,9 @@ private:
     int order;
     QLabel *labelOrder;
     QLabel *labelApi;
+
+    QTimer* longPressTimer;
+    bool longPressTriggered;
 };
 
 // Диалог создания проекта
