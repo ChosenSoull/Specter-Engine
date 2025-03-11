@@ -77,6 +77,22 @@ void EditorWindow::setupMenuBar() {
                            "QMenu::item { padding: 5px 20px; }"
                            "QMenu::item:selected { background-color: #333333; }");
 
+    // Добавляем логотип в начало QMenuBar
+    QWidget *logoWidget = new QWidget(menuBar);
+    QHBoxLayout *logoLayout = new QHBoxLayout(logoWidget);
+    logoLayout->setContentsMargins(5, 0, 5, 0); // Минимальные отступы
+    QLabel *logoLabel = new QLabel(logoWidget);
+    QPixmap logo(":/resources/SpecterEngineLogo.png");
+    if (!logo.isNull()) {
+        logoLabel->setPixmap(logo.scaled(20, 20, Qt::KeepAspectRatio));
+    } else {
+        logoLabel->setText("L");
+    }
+    logoLayout->addWidget(logoLabel);
+    logoLayout->addStretch(); // Растягиваем, чтобы логотип был слева
+    logoWidget->setLayout(logoLayout);
+    menuBar->setCornerWidget(logoWidget, Qt::TopLeftCorner); // Логотип в левом верхнем углу
+
     // File Menu
     QMenu *fileMenu = menuBar->addMenu("File");
     fileMenu->addAction("Open Project", this, &EditorWindow::openProject);
@@ -94,8 +110,6 @@ void EditorWindow::setupMenuBar() {
     // Edit Menu
     QMenu *editMenu = menuBar->addMenu("Edit");
     editMenu->addAction("Open Code Editor", this, &EditorWindow::openCodeEditor);
-    editMenu->addSeparator();
-    editMenu->addAction("Settings", this, &EditorWindow::showSettings);
 
     // Build Menu
     QMenu *buildMenu = menuBar->addMenu("Build");
@@ -103,7 +117,12 @@ void EditorWindow::setupMenuBar() {
     buildMenu->addAction("Build Release", this, &EditorWindow::buildRelease);
     buildMenu->addAction("Run", this, &EditorWindow::runProject);
 
-    // About Menu
+    // Settings Action
+    QAction *settingsAction = new QAction("Settings", this);
+    connect(settingsAction, &QAction::triggered, this, &EditorWindow::showSettings);
+    menuBar->addAction(settingsAction);
+
+    // Help Menu
     QMenu *helpMenu = menuBar->addMenu("Help");
     helpMenu->addAction("About", this, &EditorWindow::showAbout);
 }
@@ -226,8 +245,7 @@ void EditorWindow::openCodeEditor() {
     if (!codeEditorProcess) {
         codeEditorProcess = new QProcess(this);
     }
-    // Запускаем VSCode в директории проекта (можно заменить на другой редактор)
-    QString editorCommand = "code"; // Предполагается, что VSCode установлен и доступен в PATH
+    QString editorCommand = "code";
     QStringList arguments;
     arguments << projectPath;
     codeEditorProcess->start(editorCommand, arguments);

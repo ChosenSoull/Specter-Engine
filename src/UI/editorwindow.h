@@ -10,12 +10,10 @@
 #include <QTreeWidget>
 #include <QListWidget>
 #include <QTextEdit>
-#include <QToolBar>
 #include <QStatusBar>
 #include <QDialog>
 #include <QVBoxLayout>
 #include <QProcess>
-#include <QDebug>
 
 class SettingsDialog : public QDialog {
     Q_OBJECT
