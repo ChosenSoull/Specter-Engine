@@ -1,5 +1,4 @@
 #include "editorwindow.h"
-#include "terminalwidget.h" // Подключаем TerminalWidget
 #include <QVBoxLayout>
 #include <QSettings>
 #include <QPushButton>
@@ -18,7 +17,7 @@
 #include <QDockWidget>
 
 EditorWindow::EditorWindow(const QString &projectPath, QWidget *parent)
-    : QMainWindow(parent), projectPath(projectPath), codeEditorProcess(nullptr), terminalProcess(nullptr) {
+    : QMainWindow(parent), projectPath(projectPath), codeEditorProcess(nullptr) {
     // Загружаем имя проекта из config.cfg
     QSettings config(projectPath + "/config.cfg", QSettings::IniFormat);
     config.beginGroup("Project");
@@ -65,7 +64,6 @@ void EditorWindow::setupUI() {
     setupHierarchyPanel();
     setupInspectorPanel();
     setupAssetBrowser();
-    setupTerminalPanel(); // Заменяем setupConsolePanel на setupTerminalPanel
     setupModulesPanel();
 
     // Статус-бар
@@ -117,7 +115,6 @@ void EditorWindow::setupMenuBar() {
     // Edit Menu
     QMenu *editMenu = menuBar->addMenu("Edit");
     editMenu->addAction("Open Code Editor", this, &EditorWindow::openCodeEditor);
-    editMenu->addAction("Open Terminal", this, &EditorWindow::openTerminal); // Добавлено
 
     // Build Menu
     QMenu *buildMenu = menuBar->addMenu("Build");
@@ -231,20 +228,6 @@ void EditorWindow::setupAssetBrowser() {
     layout->addWidget(assetList);
     assetBrowserDock->setWidget(assetBrowserWidget);
     addDockWidget(Qt::LeftDockWidgetArea, assetBrowserDock);
-}
-
-void EditorWindow::setupTerminalPanel() {
-    terminalDock = new QDockWidget("Terminal", this);
-    TerminalWidget *terminalWidget = new TerminalWidget(this);
-    terminalDock->setWidget(terminalWidget);
-    addDockWidget(Qt::BottomDockWidgetArea, terminalDock);
-}
-
-void EditorWindow::openTerminal() {
-    if (terminalDock) {
-        terminalDock->show();
-        terminalDock->raise(); // Поднимаем панель на передний план
-    }
 }
 
 void EditorWindow::setupModulesPanel() {
