@@ -17,7 +17,7 @@
 #include <QDockWidget>
 
 EditorWindow::EditorWindow(const QString &projectPath, QWidget *parent)
-    : QMainWindow(parent), projectPath(projectPath), codeEditorProcess(nullptr) {
+    : QMainWindow(parent), projectPath(projectPath), codeEditorProcess(nullptr), placeholderVisible(false) {
     // Загружаем имя проекта из config.cfg
     QSettings config(projectPath + "/config.cfg", QSettings::IniFormat);
     config.beginGroup("Project");
@@ -83,7 +83,7 @@ void EditorWindow::setupMenuBar() {
                            "QMenu::item:selected { background-color: #333333; }");
 
     // Добавляем логотип в начало QMenuBar
-    QWidget *logoWidget = new QWidget(menuBar);
+    QWidget *logoWidget = new QWidget(this);
     QHBoxLayout *logoLayout = new QHBoxLayout(logoWidget);
     logoLayout->setContentsMargins(5, 0, 5, 0); // Минимальные отступы
     QLabel *logoLabel = new QLabel(logoWidget);
@@ -115,6 +115,8 @@ void EditorWindow::setupMenuBar() {
     // Edit Menu
     QMenu *editMenu = menuBar->addMenu("Edit");
     editMenu->addAction("Open Code Editor", this, &EditorWindow::openCodeEditor);
+    // Добавляем действие для переключения Placeholder
+    placeholderAction = editMenu->addAction("Activate Placeholder", this, &EditorWindow::togglePlaceholder);
 
     // Build Menu
     QMenu *buildMenu = menuBar->addMenu("Build");
@@ -137,14 +139,35 @@ void EditorWindow::setupSceneView() {
     sceneViewWidget->setStyleSheet("background-color: #333333;");
     setCentralWidget(sceneViewWidget);
 
-    QVBoxLayout *layout = new QVBoxLayout(sceneViewWidget);
-    QLabel *sceneLabel = new QLabel("Scene View (Viewport)", this);
+    sceneLayout = new QVBoxLayout(sceneViewWidget);
+    sceneLabel = new QLabel("Scene View (Viewport)", this);
     sceneLabel->setAlignment(Qt::AlignCenter);
-    layout->addWidget(sceneLabel);
+    sceneLayout->addWidget(sceneLabel);
 
-    QLabel *placeholder = new QLabel("3D/2D Scene Placeholder", this);
-    placeholder->setAlignment(Qt::AlignCenter);
-    layout->addWidget(placeholder);
+    // Создаём Placeholder без родителя, чтобы он не отображался автоматически
+    placeholderWidget = new QLabel("3D/2D Scene Placeholder", nullptr);
+    placeholderWidget->setAlignment(Qt::AlignCenter);
+    placeholderWidget->hide(); // Скрываем по умолчанию
+}
+
+void EditorWindow::togglePlaceholder() {
+    if (placeholderVisible) {
+        // Деактивируем Placeholder
+        sceneLayout->removeWidget(placeholderWidget);
+        placeholderWidget->hide(); // Явно скрываем
+        sceneLayout->addWidget(sceneLabel);
+        sceneLabel->show(); // Явно показываем
+        placeholderVisible = false;
+        placeholderAction->setText("Activate Placeholder");
+    } else {
+        // Активируем Placeholder
+        sceneLayout->removeWidget(sceneLabel);
+        sceneLabel->hide(); // Явно скрываем
+        sceneLayout->addWidget(placeholderWidget);
+        placeholderWidget->show(); // Явно показываем
+        placeholderVisible = true;
+        placeholderAction->setText("Deactivate Placeholder");
+    }
 }
 
 void EditorWindow::setupHierarchyPanel() {
@@ -162,7 +185,7 @@ void EditorWindow::setupHierarchyPanel() {
     connect(hierarchyTree, &QTreeWidget::customContextMenuRequested, this, [this, hierarchyTree](const QPoint &pos) {
         QTreeWidgetItem *item = hierarchyTree->itemAt(pos);
         if (item) {
-            QMenu contextMenu;
+            QMenu contextMenu(this);
             contextMenu.addAction("Rename", this, [item]() {
                 bool ok;
                 QString newName = QInputDialog::getText(nullptr, "Rename Object", "Enter new name:", QLineEdit::Normal, item->text(0), &ok);

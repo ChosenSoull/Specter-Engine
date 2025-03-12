@@ -2,27 +2,24 @@
 #define EDITORWINDOW_H
 
 #include <QMainWindow>
-#include <QMenuBar>
-#include <QMenu>
-#include <QAction>
-#include <QLabel>
+#include <QDialog>
 #include <QDockWidget>
 #include <QTreeWidget>
 #include <QListWidget>
-#include <QTextEdit>
-#include <QStatusBar>
-#include <QDialog>
-#include <QVBoxLayout>
+#include <QLabel>
 #include <QProcess>
+#include <QVBoxLayout>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
+#include <QStatusBar>
 
 class SettingsDialog : public QDialog {
     Q_OBJECT
 public:
     explicit SettingsDialog(QWidget *parent = nullptr) : QDialog(parent) {
         setWindowTitle("Settings");
-        QVBoxLayout *layout = new QVBoxLayout(this);
-        QLabel *label = new QLabel("Settings Placeholder", this);
-        layout->addWidget(label);
+        resize(400, 300);
     }
 };
 
@@ -30,24 +27,10 @@ class AboutDialog : public QDialog {
     Q_OBJECT
 public:
     explicit AboutDialog(QWidget *parent = nullptr) : QDialog(parent) {
-        setWindowTitle("About Specter Game Engine");
+        setWindowTitle("About Specter Engine");
+        resize(400, 300);
         QVBoxLayout *layout = new QVBoxLayout(this);
-
-        // Логотип
-        QLabel *logoLabel = new QLabel(this);
-        QPixmap logo(":/resources/SpecterEngineLogo.png");
-        if (!logo.isNull()) {
-            logoLabel->setPixmap(logo.scaled(100, 100, Qt::KeepAspectRatio));
-            logoLabel->setAlignment(Qt::AlignCenter);
-        } else {
-            logoLabel->setText("Logo Missing");
-        }
-        layout->addWidget(logoLabel);
-
-        // Информация
-        QLabel *infoLabel = new QLabel("Specter Game Engine\nCopyright © 2025\nAuthor: ChosenSoul", this);
-        infoLabel->setAlignment(Qt::AlignCenter);
-        layout->addWidget(infoLabel);
+        layout->addWidget(new QLabel("Specter Engine Editor\nVersion 1.0", this));
     }
 };
 
@@ -55,18 +38,7 @@ class EditorWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit EditorWindow(const QString &projectPath, QWidget *parent = nullptr);
-
-private:
-    void setupUI();
-    void setupSceneView();
-    void setupHierarchyPanel();
-    void setupInspectorPanel();
-    void setupAssetBrowser();
-    void openTerminal();
-    void setupModulesPanel();
-    void setupStatusBar();
-    void setupMenuBar();
+    EditorWindow(const QString &projectPath, QWidget *parent = nullptr);
 
 private slots:
     void openProject();
@@ -78,16 +50,37 @@ private slots:
     void runProject();
     void showSettings();
     void showAbout();
+    void togglePlaceholder();
 
 private:
+    void setupUI();
+    void setupMenuBar();
+    void setupSceneView();
+    void setupHierarchyPanel();
+    void setupInspectorPanel();
+    void setupAssetBrowser();
+    void setupModulesPanel();
+    void setupStatusBar();
+
     QString projectPath;
-    QWidget *sceneViewWidget;
+    QProcess *codeEditorProcess;
+
+    // Док-виджеты
     QDockWidget *hierarchyDock;
     QDockWidget *inspectorDock;
     QDockWidget *assetBrowserDock;
     QDockWidget *modulesDock;
+
+    // Центральный виджет (Сцена)
+    QWidget *sceneViewWidget;
+    QVBoxLayout *sceneLayout; // Для управления содержимым сцены
+    QLabel *sceneLabel; // Метка сцены
+    QLabel *placeholderWidget; // Placeholder
+    bool placeholderVisible; // Флаг состояния Placeholder
+    QAction *placeholderAction; // Действие для переключения Placeholder
+
+    // Статус-бар
     QStatusBar *statusBar;
-    QProcess *codeEditorProcess;
 };
 
 #endif // EDITORWINDOW_H
